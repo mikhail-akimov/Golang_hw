@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 var th = []int{0, 1, 2, 3, 4, 5}
@@ -48,12 +50,21 @@ func main() {
 
 func ExecutePipeline(jobs ...job) {
 	in := make(chan interface{})
+	wg := &sync.WaitGroup{}
 	fmt.Println(jobs)
 	for _, job := range jobs {
 		out := make(chan interface{})
 		fmt.Println("Starting job --- ", job)
 		fmt.Println("In --", in, "Out --", out)
-		go job(in, out)
+		wg.Add(1)
+		go worker(job, in, out, wg)
 		in = out
 	}
+	wg.Wait()
+}
+
+func worker(job job, in chan interface{}, out chan interface{}, wg *sync.WaitGroup) {
+	defer wg.Done()
+	go job(in, out)
+	runtime.Gosched()
 }
